@@ -1,0 +1,7 @@
+chromadb,
+psycopg2-binary
+Faker
+sentence-transformers
+python-dotenv
+faker-commerce
+SQLAlchemy
