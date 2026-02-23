@@ -38,31 +38,6 @@ nl2sql/
 └── README.md
 ```
 
-## Database Schema
-
-### Tables
-
-1. **Users** - Stores buyer and seller information
-   - `user_id` (PK)
-   - `username` (unique)
-   - `user_type` (Buyer/Seller)
-
-2. **Products** - Product information from sellers
-   - `product_id` (PK)
-   - `seller_id` (FK to Users)
-   - `name`, `description`, `price`, `stock_count`, `category`
-
-3. **Orders** - Order details and status
-   - `order_id` (PK)
-   - `buyer_id` (FK to Users)
-   - `order_status`, `total_amount`, `created_at`
-
-4. **OrderItems** - Individual items in orders
-   - `item_id` (PK)
-   - `order_id` (FK to Orders)
-   - `product_id` (FK to Products)
-   - `quantity`, `price_at_purchase`
-
 ## Dependencies
 
 - **SQLAlchemy**: ORM for database modeling
