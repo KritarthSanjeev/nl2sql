@@ -9,20 +9,32 @@ A Retrieval-Augmented Generation (RAG) system that converts natural language que
 - **Marketplace Database**: Pre-configured schema with Users, Products, Orders, and OrderItems tables
 - **Data Seeding**: Generate realistic test data using Faker
 - **RAG Architecture**: Leverages ChromaDB for semantic search over database schema
+- **AI-Powered SQL Agent**: Uses Groq API with advanced LLM models to generate and execute SQL queries
+- **Security Guardrails**: Built-in protection against dangerous SQL operations (DROP, DELETE, UPDATE, etc.)
+- **Self-Correcting Queries**: Automatic retry mechanism with up to 3 attempts for query refinement
+- **JSON Structured Output**: Returns thought process and execution results in structured format
 
 ## Project Structure
 
 ```
 nl2sql/
 ├── src/
+│   ├── agents/
+│   │   ├── sql_agent.py        # NL2SQL Agent using Groq API for query generation
+│   │   └── __init__.py
 │   ├── database/
-│   │   ├── db_models.py       # SQLAlchemy ORM models for marketplace database
-│   │   └── data_seed.py       # Script to populate database with fake data
-│   └── rag/
-│       └── vector_store.py    # ChromaDB integration for schema embeddings
-├── chroma_db/                  # Vector store storage (persistent)
-├── requirements.txt            # Python dependencies
-├── pyvenv.cfg                 # Virtual environment config
+│   │   ├── db_models.py        # SQLAlchemy ORM models for marketplace database
+│   │   ├── data_seed.py        # Script to populate database with fake data
+│   │   └── __pycache__/
+│   ├── rag/
+│   │   ├── vector_store.py     # ChromaDB integration for schema embeddings
+│   │   ├── __init__.py
+│   │   └── __pycache__/
+│   ├── __init__.py
+│   └── __pycache__/
+├── chroma_db/                   # Vector store storage (persistent)
+├── requirements.txt             # Python dependencies
+├── pyvenv.cfg                   # Virtual environment config
 └── README.md
 ```
 
@@ -60,6 +72,7 @@ nl2sql/
 - **Faker**: Generate realistic test data
 - **faker-commerce**: Commerce-specific fake data provider
 - **python-dotenv**: Environment variable management
+- **Groq**: API client for accessing advanced LLM models
 
 ## Setup
 
@@ -88,6 +101,7 @@ Create a `.env` file in the project root:
 
 ```env
 DATABASE_URL=postgresql://user:password@localhost/nl2sql_db
+API_KEY=your_groq_api_key_here
 ```
 
 ### 4. Initialize Database
@@ -118,11 +132,75 @@ from src.rag.vector_store import SchemaVectorStorage
 
 vec_store = SchemaVectorStorage()
 vec_store.index_schema()  # Index database schema into ChromaDB
+
+# Retrieve schema context for a query
+schema_context = vec_store.retrieve_context(query="orders by customers")
 ```
 
-### Querying
+### Using the NL2SQL Agent
 
-The vector store enables semantic search over the database schema to retrieve relevant table/column information for natural language queries.
+The SQL Agent converts natural language questions into SQL queries, executes them, and provides structured results:
+
+```python
+from src.agents.sql_agent import NL2SQL_Agent
+from src.rag.vector_store import SchemaVectorStorage
+
+# Initialize agent and vector store
+agent = NL2SQL_Agent(max_retries=3)
+vec_store = SchemaVectorStorage()
+
+# Get schema context for the query
+user_question = "How many orders did each buyer make?"
+schema_context = vec_store.retrieve_context(user_question)
+
+# Run the agent to generate and execute SQL
+result = agent.run(
+    user_question=user_question,
+    schema_context=schema_context
+)
+
+# Result contains:
+# {
+#     "status": "success",
+#     "response": [execution results],
+#     "Query": "generated SQL query"
+# }
+```
+
+### Agent Features
+
+- **Thought Process**: The agent explains its reasoning for table joins and filtering
+- **Security Checks**: Automatically blocks dangerous operations (DROP, DELETE, UPDATE, INSERT, ALTER, TRUNCATE, GRANT)
+- **Self-Correction**: Implements automatic retry logic with up to 3 attempts to correct failed queries
+- **Schema Context**: Retrieves relevant schema information from ChromaDB to provide context to the LLM
+- **JSON Output**: Structured JSON responses containing the thought process, SQL query, and execution results
+
+### Example Workflow
+
+```python
+from src.agents.sql_agent import NL2SQL_Agent
+from src.rag.vector_store import SchemaVectorStorage
+
+# Initialize components
+agent = NL2SQL_Agent(max_retries=3)
+vec_store = SchemaVectorStorage()
+
+# Example queries
+queries = [
+    "What are the top 5 most popular products by order count?",
+    "List all sellers and their total revenue",
+    "Find customers with orders over $1000"
+]
+
+for question in queries:
+    schema_context = vec_store.retrieve_context(question)
+    result = agent.run(user_question=question, schema_context=schema_context)
+    
+    if result["status"] == "success":
+        print(f"Question: {question}")
+        print(f"Generated Query: {result['Query']}")
+        print(f"Results: {result['response']}\n")
+```
 
 ## Requirements
 
@@ -137,6 +215,7 @@ The vector store enables semantic search over the database schema to retrieve re
 - **Sentence Transformers** - Embedding models
 - **PostgreSQL** - Primary database
 - **Faker** - Test data generation
+- **Groq** - LLM API for query generation
 
 ## License
 

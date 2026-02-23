@@ -71,19 +71,19 @@ class SchemaVectorStorage:
         return relevant_tables
     
 #Testing
-if __name__ == "__main__":
-    # Initialize
-    vector_store = SchemaVectorStorage()
+# if __name__ == "__main__":
+#     # Initialize
+#     vector_store = SchemaVectorStorage()
 
-    # Step 1: Index the schema (Run this once)
-    vector_store.index_schema()
+#     # Step 1: Index the schema (Run this once)
+#     vector_store.index_schema()
 
-    query = input("Enter the prompt related to the database\n")
-    print(f"\n Query: {query}")
+#     query = input("Enter the prompt related to the database\n")
+#     print(f"\n Query: {query}")
 
-    results = vector_store.get_relevant_tables(query)
+#     results = vector_store.get_relevant_tables(query)
     
-    print("Most Relevant Tables Found:")
-    for res in results:
-        print(f" - {res['table_name']}")
+#     print("Most Relevant Tables Found:")
+#     for res in results:
+#         print(f" - {res['table_name']}")
 
