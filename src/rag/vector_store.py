@@ -53,7 +53,7 @@ class SchemaVectorStorage:
         )
         print(f"Indexed {len(table_names)} tables into ChromaDB")
     
-    def get_relevant_tables(self, query: str, number_of_results: int=2):
+    def get_relevant_tables(self, query: str, number_of_results: int=3):
         # Takes a user question and returns top n_results
         results = self.collection.query( 
             query_texts=[query],

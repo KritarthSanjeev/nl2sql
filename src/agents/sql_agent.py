@@ -4,12 +4,14 @@ import json
 from groq import Groq
 from sqlalchemy import create_engine, text
 from dotenv import load_dotenv
+from decimal import Decimal
+from datetime import datetime, date
 
 from src.rag.vector_store import SchemaVectorStorage
 
 load_dotenv()
 
-client = Groq(api_key=os.getenv("API_KEY"))
+client = Groq(api_key=os.getenv("API_KEY")) #LLM Client
 DATABASE_URL = os.getenv("DATABASE_URL")
 engine = create_engine(DATABASE_URL)
 
@@ -33,9 +35,21 @@ class NL2SQL_Agent:
     def execute_sql(self,sql_query:str):
         with engine.connect() as connection: # with is used to close any connection that is opened
             result = connection.execute(text(sql_query))
-            rows = result.fetchall()
-            columns = result.keys()
-            return [dict(zip(columns,rows)) for row in rows]
+            
+            # 1. Use .mappings().all() to natively bind column names to values
+            mapped_rows = result.mappings().all()
+            
+            data = []
+            for row in mapped_rows:
+                # Convert the SQLAlchemy mapping object to a standard Python dictionary
+                row_dict = dict(row)
+                
+                for key, value in row_dict.items():
+                    if isinstance(value, (Decimal, datetime, date)):
+                        row_dict[key] = str(value)
+                data.append(row_dict)
+                
+            return data
 
     def run(self, user_question:str, schema_context:str):
         system_prompt = f"""
@@ -60,7 +74,6 @@ class NL2SQL_Agent:
             {"role": "system", "content" : system_prompt},
             {"role": "user", "content" : user_question}
         ]
-
         #Self correction
         for attempt in range(self.max_retries):
             print(f"\n Attempt {attempt + 1} of {self.max_retries}...")
@@ -72,7 +85,7 @@ class NL2SQL_Agent:
                     messages= messages,
                     temperature=0.0
                 )
-                
+
                 result_json = json.loads(response.choices[0].message.content)
                 planner_thought = result_json.get("thought_process", "")
                 sql_query = result_json.get("sql_query", "")
@@ -86,19 +99,16 @@ class NL2SQL_Agent:
                 
                 print("Executing Query against postgresql")
                 data = self.execute_sql(sql_query)
-
+                
                 print("Success! Query executed successfully")
                 return {"status":"success","response":data,"Query":sql_query}
             
             except Exception as e:
                 error_msg = str(e)
-
                 print(f"Execution failed: {error_msg}")
-
                 messages.append({
                     "role":"agent","content":response.choices[0].message.content
                 })
-
                 messages.append({
                     "role":"user","content":f"The query failed with error: {e}"
                 })
@@ -109,11 +119,11 @@ class NL2SQL_Agent:
 if __name__ == "__main__":
     agent = NL2SQL_Agent()
     vector_store = SchemaVectorStorage()
-    
-    question = input("Enter your question to get the result from the Database\n")
+
+    question = "Who has the most number of orders and what is the total price of the order?"
 
     print(f"Retrieving the Schema from the DB for: {question}")
-    relevant_tables = vector_store.get_relevant_tables(query = question, number_of_results=2)
+    relevant_tables = vector_store.get_relevant_tables(query = question, number_of_results=3)
     
     schema_context = ""
     for table in relevant_tables:
