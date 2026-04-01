@@ -119,7 +119,7 @@ class NL2SQL_Agent:
 if __name__ == "__main__":
     agent = NL2SQL_Agent()
     vector_store = SchemaVectorStorage()
-
+    
     question = "Who has the most number of orders and what is the total price of the order?"
 
     print(f"Retrieving the Schema from the DB for: {question}")
